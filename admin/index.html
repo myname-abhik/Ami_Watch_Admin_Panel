@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ami Watch admin</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@600;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#eef1f5;--panel:#fff;--ink:#18212f;--mute:#667085;--line:#dde2ea;--accent:#1d4ed8;--danger:#b42318;--ok:#067647;
+ --head:"Bricolage Grotesque",system-ui,sans-serif;--body:system-ui,-apple-system,"Segoe UI",sans-serif}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 var(--body)}
+button,input,textarea{font:inherit;color:inherit}
+button{cursor:pointer;border:1px solid var(--line);background:var(--panel);border-radius:8px;padding:7px 14px}
+button:hover{border-color:#b9c1cf}
+button.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+button.danger{color:var(--danger)}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+[hidden]{display:none!important}
+.login{min-height:100vh;display:grid;place-items:center;padding:20px}
+.login form{background:var(--panel);padding:32px;border-radius:14px;width:100%;max-width:360px;border:1px solid var(--line)}
+h1,h2{font-family:var(--head);margin:0}
+h1{font-size:26px;margin-bottom:4px}
+.sub{color:var(--mute);margin:0 0 20px}
+label{display:block;font-weight:600;font-size:13px;margin:12px 0 4px}
+input,textarea{width:100%;padding:9px 11px;border:1px solid var(--line);border-radius:8px;background:#fff}
+textarea{min-height:90px;resize:vertical}
+.err{color:var(--danger);font-size:14px;margin-top:10px;min-height:20px}
+header{display:flex;align-items:center;gap:20px;padding:14px 24px;background:var(--panel);border-bottom:1px solid var(--line);flex-wrap:wrap}
+header h2{font-size:20px;margin-right:auto}
+nav{display:flex;gap:4px}
+nav button{border:0;background:none;color:var(--mute);font-weight:600;padding:8px 14px;border-radius:8px}
+nav button[aria-selected=true]{background:var(--ink);color:#fff}
+main{max-width:1100px;margin:24px auto;padding:0 20px}
+.bar{display:flex;gap:12px;margin-bottom:16px;align-items:center}
+.bar input{max-width:320px}
+.bar .count{color:var(--mute);margin-right:auto}
+.wrap{background:var(--panel);border:1px solid var(--line);border-radius:12px;overflow-x:auto}
+table{width:100%;border-collapse:collapse;min-width:640px}
+th,td{text-align:left;padding:10px 14px;border-bottom:1px solid var(--line);vertical-align:middle}
+th{font-size:13px;color:var(--mute);font-weight:600}
+tr:last-child td{border-bottom:0}
+.poster{width:44px;height:64px;border-radius:6px;object-fit:cover;background:var(--line);display:block}
+.t{font-weight:600}.m{color:var(--mute);font-size:13px}
+td.act{white-space:nowrap;text-align:right}
+td.act button{margin-left:6px;padding:5px 11px;font-size:14px}
+.empty{padding:48px;text-align:center;color:var(--mute)}
+dialog{border:0;border-radius:14px;padding:0;width:min(640px,94vw);max-height:92vh}
+dialog::backdrop{background:rgba(24,33,47,.5)}
+dialog form{display:flex;flex-direction:column;max-height:92vh}
+.dh{padding:20px 24px 4px}.db{padding:4px 24px 12px;overflow:auto}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:0 14px}.grid .full{grid-column:1/-1}
+.up{display:flex;gap:8px;align-items:center}.up input{flex:1}.up button{white-space:nowrap;min-width:78px}
+.thumb{width:34px;height:48px;object-fit:cover;border-radius:4px;background:var(--line);flex:none}
+.hint{font-weight:400;color:var(--mute)}
+.df{display:flex;gap:8px;justify-content:flex-end;padding:14px 24px;border-top:1px solid var(--line)}
+.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--ink);color:#fff;padding:10px 18px;border-radius:8px}
+@media(max-width:560px){.grid{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+
+<section class="login" id="login">
+  <form id="loginForm">
+    <h1>Ami Watch admin</h1>
+    <p class="sub">Sign in to manage movies and pick-ups.</p>
+    <label for="pw">Password</label>
+    <input id="pw" type="password" autocomplete="current-password" required autofocus>
+    <div class="err" id="loginErr" role="alert"></div>
+    <button class="primary" style="width:100%;margin-top:6px">Sign in</button>
+  </form>
+</section>
+
+<div id="app" hidden>
+  <header>
+    <h2>Ami Watch admin</h2>
+    <nav id="tabs" role="tablist"></nav>
+    <button id="logout">Sign out</button>
+  </header>
+  <main>
+    <div class="bar">
+      <input id="search" type="search" placeholder="Search by title" aria-label="Search by title">
+      <span class="count" id="count"></span>
+      <button class="primary" id="add"></button>
+    </div>
+    <div class="wrap"><table><thead id="thead"></thead><tbody id="tbody"></tbody></table><div class="empty" id="empty" hidden></div></div>
+  </main>
+</div>
+
+<dialog id="dlg">
+  <form id="form" method="dialog">
+    <div class="dh"><h2 id="dTitle"></h2></div>
+    <div class="db"><div class="grid" id="fields"></div><div class="err" id="formErr" role="alert"></div></div>
+    <div class="df"><button type="button" id="cancel">Cancel</button><button class="primary" id="save">Save changes</button></div>
+  </form>
+</dialog>
+<div class="toast" id="toast" hidden></div>
+
+<script>
+const API = '/admin/api';
+const RES = {
+  movies: { label: 'Movies', one: 'movie', title: 'Movie', poster: 'Poster',
+    meta: i => [i.Year, i.Language, (i.Genres || []).join(', ')].filter(Boolean).join(' · '),
+    fields: [
+      ['Movie','Title','full'], ['Poster','Poster image URL','full','url'], ['Image','Backdrop image URL','full','url'],
+      ['Video','Video URL','full','video'], ['Description','Description','full','area'], ['Dir','Director'], ['Language','Language'],
+      ['Year','Year'], ['Rating','Rating'], ['Age','Age rating'], ['Genres','Genres','full','list'],
+      ['Features','Features','full','list'], ['Cast','Cast','full','list']] },
+  pickups: { label: 'Pick-ups', one: 'pick-up', title: 'Movie_title', poster: 'Movie_poster',
+    meta: i => i.Movie_feature || '',
+    fields: [['Movie_title','Title','full'], ['Movie_poster','Poster image URL','full','url'], ['Movie_feature','Feature','full','area']] }
+};
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+let token = ''; try { token = sessionStorage.getItem('adminToken') || ''; } catch (e) {}
+let cur = 'movies', items = [], editing = null;
+
+async function api(path, opts = {}) {
+  const r = await fetch(API + path, { ...opts, headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token } });
+  const data = await r.json().catch(() => ({}));
+  if (r.status === 401 && path !== '/login') { signOut(); throw new Error(data.error); }
+  if (!r.ok) throw new Error(data.error || 'Request failed');
+  return data;
+}
+function toast(msg) { const t = $('toast'); t.textContent = msg; t.hidden = false; clearTimeout(toast.t); toast.t = setTimeout(() => t.hidden = true, 2500); }
+function show() { $('login').hidden = !!token; $('app').hidden = !token; if (token) { renderTabs(); load(); } }
+function signOut() { token = ''; try { sessionStorage.removeItem('adminToken'); } catch (e) {} show(); }
+
+$('loginForm').onsubmit = async e => {
+  e.preventDefault(); $('loginErr').textContent = '';
+  try {
+    token = (await api('/login', { method: 'POST', body: JSON.stringify({ password: $('pw').value }) })).token;
+    try { sessionStorage.setItem('adminToken', token); } catch (e) {}
+    $('pw').value = ''; show();
+  } catch (err) { $('loginErr').textContent = err.message; }
+};
+$('logout').onclick = signOut;
+
+function renderTabs() {
+  $('tabs').innerHTML = Object.entries(RES).map(([k, r]) => `<button role="tab" data-k="${k}" aria-selected="${k === cur}">${r.label}</button>`).join('');
+  $('tabs').querySelectorAll('button').forEach(b => b.onclick = () => { cur = b.dataset.k; $('search').value = ''; renderTabs(); load(); });
+  $('add').textContent = 'Add ' + RES[cur].one;
+}
+async function load() {
+  try { items = await api('/' + cur); render(); } catch (e) { if (token) toast(e.message); }
+}
+function render() {
+  const r = RES[cur], q = $('search').value.trim().toLowerCase();
+  const rows = items.filter(i => String(i[r.title]).toLowerCase().includes(q));
+  $('count').textContent = `${rows.length} of ${items.length} ${r.label.toLowerCase()}`;
+  $('thead').innerHTML = '<tr><th></th><th>Title</th><th>Details</th><th>Added</th><th></th></tr>';
+  $('tbody').innerHTML = rows.map(i => `<tr>
+    <td><img class="poster" src="${esc(i[r.poster])}" alt="" loading="lazy" onerror="this.style.visibility='hidden'"></td>
+    <td class="t">${esc(i[r.title])}</td><td class="m">${esc(r.meta(i))}</td>
+    <td class="m">${i.createdAt ? new Date(i.createdAt).toLocaleDateString() : ''}</td>
+    <td class="act"><button data-edit="${i._id}">Edit</button><button class="danger" data-del="${i._id}">Delete</button></td></tr>`).join('');
+  $('empty').hidden = rows.length > 0;
+  $('empty').textContent = items.length ? 'No titles match your search.' : `No ${r.label.toLowerCase()} yet. Use “Add ${r.one}” to create the first one.`;
+}
+$('search').oninput = render;
+$('tbody').onclick = async e => {
+  const ed = e.target.dataset.edit, del = e.target.dataset.del;
+  if (ed) openForm(items.find(i => i._id === ed));
+  if (del) {
+    const it = items.find(i => i._id === del);
+    if (!confirm(`Delete “${it[RES[cur].title]}”? This can’t be undone.`)) return;
+    try { await api(`/${cur}/${del}`, { method: 'DELETE' }); toast('Deleted'); load(); } catch (err) { toast(err.message); }
+  }
+};
+
+function openForm(item) {
+  editing = item || null; const r = RES[cur];
+  $('dTitle').textContent = (item ? 'Edit ' : 'Add ') + r.one; $('formErr').textContent = '';
+  $('fields').innerHTML = r.fields.map(([k, l, span, type]) => {
+    const req = k === r.title ? 'required' : '';
+    let v = item ? item[k] : ''; if (Array.isArray(v)) v = v.join(', ');
+    const hint = type === 'list' ? ' <span class="hint">(separate with commas)</span>' : '';
+    const input = type === 'area' ? `<textarea id="f_${k}" ${req}>${esc(v)}</textarea>`
+      : type === 'url' || type === 'video'
+        ? `<div class="up">${type === 'url' ? `<img class="thumb" src="${esc(v)}" alt="" onerror="this.style.visibility='hidden'" onload="this.style.visibility='visible'">` : ''}<input id="f_${k}" type="url" value="${esc(v)}" ${req}><button type="button" data-up="${k}" data-kind="${type}">Upload</button></div>`
+        : `<input id="f_${k}" value="${esc(v)}" ${req}>`;
+    return `<div class="${span || ''}"><label for="f_${k}">${l}${hint}</label>${input}</div>`;
+  }).join('');
+  $('dlg').showModal();
+}
+$('add').onclick = () => openForm(null);
+$('cancel').onclick = () => $('dlg').close();
+$('form').onsubmit = async e => {
+  e.preventDefault(); const r = RES[cur], body = {};
+  r.fields.forEach(([k,,, type]) => { const v = $('f_' + k).value.trim(); body[k] = type === 'list' ? v.split(',').map(s => s.trim()).filter(Boolean) : v; });
+  $('save').disabled = true;
+  try {
+    await api(editing ? `/${cur}/${editing._id}` : '/' + cur, { method: editing ? 'PUT' : 'POST', body: JSON.stringify(body) });
+    $('dlg').close(); toast(editing ? 'Changes saved' : 'Added'); load();
+  } catch (err) { $('formErr').textContent = err.message; }
+  $('save').disabled = false;
+};
+// Upload a local file to Cloudinary (signed by our server); resolves to the hosted URL
+function uploadFile(file, onProgress) {
+  return new Promise(async (resolve, reject) => {
+    try {
+      const sg = await api('/upload/signature');
+      const fd = new FormData();
+      fd.append('file', file); fd.append('api_key', sg.apiKey); fd.append('timestamp', sg.timestamp);
+      fd.append('folder', sg.folder); fd.append('signature', sg.signature);
+      const x = new XMLHttpRequest();
+      x.open('POST', `https://api.cloudinary.com/v1_1/${sg.cloudName}/auto/upload`);
+      x.upload.onprogress = e => e.lengthComputable && onProgress(Math.round(e.loaded / e.total * 100));
+      x.onload = () => { const d = JSON.parse(x.responseText || '{}'); x.status < 300 ? resolve(d.secure_url) : reject(new Error(d.error?.message || 'Upload failed')); };
+      x.onerror = () => reject(new Error('Upload failed. Check your connection.'));
+      x.send(fd);
+    } catch (err) { reject(err); }
+  });
+}
+$('fields').onclick = e => {
+  const btn = e.target.closest('[data-up]'); if (!btn) return;
+  const pick = document.createElement('input');
+  pick.type = 'file'; pick.accept = btn.dataset.kind === 'video' ? 'video/*' : 'image/*';
+  pick.onchange = async () => {
+    const file = pick.files[0]; if (!file) return;
+    const input = $('f_' + btn.dataset.up); btn.disabled = true; $('save').disabled = true; $('formErr').textContent = '';
+    try {
+      input.value = await uploadFile(file, p => btn.textContent = p + '%');
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+    } catch (err) { $('formErr').textContent = err.message; }
+    btn.textContent = 'Upload'; btn.disabled = false; $('save').disabled = false;
+  };
+  pick.click();
+};
+$('fields').oninput = e => { const t = e.target.parentElement.querySelector('.thumb'); if (t && e.target.type === 'url') t.src = e.target.value; };
+show();
+</script>
+</body>
+</html>
